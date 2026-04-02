@@ -1,0 +1,43 @@
+
+# General packages
+.DS_Store
+Thumbs.db
+.env
+.env.*
+*.log
+logs/
+coverage/
+
+# Node.js configs
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+
+# Nodemon
+.Kombai/
+.nodemon.json
+
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.bmp
+
+# OS Temp Paths (Windows/Linux/ arc)
+
+C:/Users/*/AppData/Local/Temp/*
+/tmp/*
+/var/tmp/*
+## vs plugin
+.vscode/
+.idea/
+*.swp
+*.swo
+
+.gitconfig
+.gitignore.bak
