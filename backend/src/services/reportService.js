@@ -4,17 +4,28 @@ Dashboard summary
 Used by POS home screen
 */
 exports.getDashboard = async () => {
-  const todaySales = await reportRepo.getTodaySales()
-  const todayTransactions = await reportRepo.getTodayTransactions()
-  const inventoryValue = await reportRepo.getInventoryValue()
-  const lowStock = await reportRepo.getLowStock()
-  const receivables = await reportRepo.getReceivableSummary()
+  const [
+    todaySales,
+    todayPurchase,
+    lowStock,
+    receivablesRow,
+    payablesRow,
+    recent
+  ] = await Promise.all([
+    reportRepo.getTodaySales(),
+    reportRepo.getTodayPurchase(),
+    reportRepo.getLowStock(),
+    reportRepo.getTotalReceivables(),
+    reportRepo.getPayablesSummary(),
+    reportRepo.getRecentTransactions()
+  ])
   return {
-    today_sales: todaySales.total_sales,
-    transactions: todayTransactions.transactions,
-    inventory_value: inventoryValue.stock_value,
+    today_sales: Number(todaySales.total_sales) || 0,
+    today_purchase: Number(todayPurchase.total_purchase) || 0,
+    receivables: Number(receivablesRow.total_receivables) || 0,
+    payables: Number(payablesRow.total_payables) || 0,
     low_stock: lowStock,
-    receivables: receivables
+    recent
   }
 }
 

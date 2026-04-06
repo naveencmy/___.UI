@@ -4,13 +4,20 @@ exports.getAll = async () => {
   const result = await db.query(
     `
     SELECT
-      id,
-      name,
-      phone,
-      type,
-      credit_limit
-    FROM parties
-    ORDER BY name
+      p.id,
+      p.name,
+      p.phone,
+      p.type,
+      p.credit_limit,
+      COALESCE(
+        SUM(CASE WHEN le.entry_type = 'debit'  THEN le.amount ELSE 0 END) -
+        SUM(CASE WHEN le.entry_type = 'credit' THEN le.amount ELSE 0 END),
+        0
+      ) AS outstanding
+    FROM parties p
+    LEFT JOIN ledger_entries le ON le.party_id = p.id
+    GROUP BY p.id, p.name, p.phone, p.type, p.credit_limit
+    ORDER BY p.name
     `
   )
   return result.rows
@@ -78,15 +85,12 @@ exports.getLedger = async (partyId) => {
   const result = await db.query(
     `
     SELECT
-      le.id,
-      le.entry_type,
+      le.entry_type AS type,
+      COALESCE(i.invoice_number, le.description, '') AS reference,
       le.amount,
-      le.description,
-      le.created_at,
-      i.invoice_number
+      TO_CHAR(le.created_at, 'YYYY-MM-DD') AS date
     FROM ledger_entries le
-    LEFT JOIN invoices i
-    ON i.id = le.invoice_id
+    LEFT JOIN invoices i ON i.id = le.invoice_id
     WHERE le.party_id=$1
     ORDER BY le.created_at DESC
     `,

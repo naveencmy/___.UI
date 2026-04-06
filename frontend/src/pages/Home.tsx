@@ -9,7 +9,7 @@ export default function Home() {
   const handleDiagnostics = () => navigate(currentUser ? "/dashboard" : "/login");
 
   return (
-    <div className="min-h-screen bg-white flex flex-col font-['Inter',sans-serif]">
+    <div className="min-h-screen bg-[#131313] flex flex-col font-['Inter',sans-serif]">
       {/* Branding Area */}
       <div className="flex-1 flex flex-col px-6 md:px-8 pt-6">
         <div className="max-w-[1248px] w-full mx-auto flex-1 flex flex-col">

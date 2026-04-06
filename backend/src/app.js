@@ -8,6 +8,8 @@ const purchaseRoutes = require('./routes/purchaseRoutes')
 const inventoryRoutes = require('./routes/inventoryRoutes')
 const partyRoutes = require('./routes/partyRoutes')
 const reportRoutes = require('./routes/reportRoutes')
+const userRoutes = require('./routes/userRoutes')
+const backupRoutes = require('./routes/backupRoutes')
 
 const errorMiddleware = require('./middleware/errorMiddleware')
 const { PORT } = require('./config/env')
@@ -24,6 +26,8 @@ app.use('/purchase', purchaseRoutes)
 app.use('/inventory', inventoryRoutes)
 app.use('/parties', partyRoutes)
 app.use('/reports', reportRoutes)
+app.use('/users', userRoutes)
+app.use('/backup', backupRoutes)
 
 app.use(errorMiddleware)
 app.get('/', (req,res)=>{

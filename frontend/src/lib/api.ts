@@ -1,306 +1,253 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios"
 
-const BASE_URL = "http://localhost:5000";
+/* =========================================================
+   BASE CONFIG (ENV SAFE)
+========================================================= */
+const BASE_URL = import.meta.env.VITE_API_URL || "/api"
 
-const api = axios.create({ baseURL: BASE_URL });
+const api = axios.create({
+  baseURL: BASE_URL,
+  timeout: 10000,
+})
 
+/* =========================================================
+   INTERCEPTORS
+========================================================= */
+
+// Attach JWT
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token")
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token}`
   }
-  return config;
-});
+  return config
+})
 
+// Global error handling
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error("[API Error]", error.response?.data ?? error.message);
-    throw error;
+  (res) => res,
+  (err: AxiosError<any>) => {
+    const status = err.response?.status
+
+    if (status === 401) {
+      localStorage.removeItem("token")
+      window.location.href = "/login"
+    }
+
+    console.error("[API ERROR]", {
+      url: err.config?.url,
+      method: err.config?.method,
+      data: err.response?.data,
+      message: err.message,
+    })
+
+    return Promise.reject(err)
   }
-);
+)
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+/* =========================================================
+   HELPER (REMOVE .data REPETITION)
+========================================================= */
+const unwrap = <T>(promise: Promise<any>): Promise<T> =>
+  promise.then((res) => res.data)
 
-export interface AuthLoginRequest {
-  username: string;
-  password: string;
-}
+/* =========================================================
+   TYPES
+========================================================= */
 
 export interface AuthUser {
-  id: number;
-  name: string;
-  role: string;
-}
-
-export interface AuthLoginResponse {
-  token: string;
-  user: AuthUser;
-}
-
-export interface ProductUnit {
-  unit_id: number;
-  unit_name: string;
-  barcode: string;
-  purchase_rate: number;
-  sales_rate: number;
-}
-
-export interface Product {
-  id: number;
-  name: string;
-  sku: string;
-  category: string;
-  reorder_level: number;
-  units: ProductUnit[];
-}
-
-export interface ProductSearchItem {
-  id: number;
-  name: string;
-  unit_id: number;
-  barcode: string;
-  sales_rate: number;
-  purchase_rate: number;
-  unit_name: string;
-}
-
-export interface InventoryItem {
-  product_unit_id: number;
-  name: string;
-  unit_name: string;
-  quantity: number;
-  purchase_rate: number;
-  stock_value: number;
+  id: number
+  username: string
+  role: string
 }
 
 export interface InventoryMovement {
-  id: number;
-  date: string;
-  type: string;
-  reference: string;
-  quantity: number;
-  unit_name: string;
+  id: number
+  name: string
+  unit_name: string
+  quantity: number
+  movement_type: string
+  created_at: string
 }
 
-export interface AdjustStockRequest {
-  product_unit_id: number;
-  quantity_change: number;
-  reason: string;
-}
-
-export interface SaleItem {
-  product_unit_id: number;
-  quantity: number;
-  rate: number;
-  total: number;
-}
-
-export interface PaymentEntry {
-  method: "cash" | "upi" | "credit";
-  amount: number;
-}
-
-export interface CreateSaleRequest {
-  party_id: number | null;
-  subtotal: number;
-  discount: number;
-  tax: number;
-  total: number;
-  items: SaleItem[];
-  payments: PaymentEntry[];
-}
-
-export interface SaleResponse {
-  id: number;
-  invoice_number: string;
-}
-
-export interface CreatePurchaseRequest {
-  party_id: number | null;
-  subtotal: number;
-  discount: number;
-  tax: number;
-  total: number;
-  items: SaleItem[];
-  payments: PaymentEntry[];
-}
-
-export interface PurchaseResponse {
-  id: number;
-  invoice_number: string;
-}
-
-export interface Party {
-  id: number;
-  name: string;
-  phone: string;
-  type: "customer" | "supplier";
-  credit_limit?: number;
-  outstanding: number;
-}
-
-export interface LedgerEntry {
-  type: string;
-  reference: string;
-  amount: number;
-  date: string;
-}
-
-export interface CreatePartyRequest {
-  name: string;
-  phone: string;
-  email?: string;
-  address?: string;
-  type: "customer" | "supplier";
-  credit_limit?: number;
-  opening_balance?: number;
-}
-
-export interface DashboardData {
-  today_sales: number;
-  today_purchase: number;
-  receivables: number;
-  payables: number;
-  low_stock: Array<{ name: string; quantity: number }>;
-  recent: Array<{ invoice: string; type: string; party: string; amount: number }>;
-}
-
-export interface SalesReportItem {
-  date: string;
-  total_sales: number;
-  total_returns: number;
-  net_sales: number;
-  transactions: number;
-  avg_bill: number;
-}
-
-// ─── Domain APIs ──────────────────────────────────────────────────────────────
+/* =========================================================
+   AUTH API
+========================================================= */
 
 export const AuthAPI = {
-  login: async (data: AuthLoginRequest): Promise<AuthLoginResponse> => {
-    const response = await api.post<AuthLoginResponse>("/auth/login", data);
-    return response.data;
-  },
-  register: async (data: AuthLoginRequest & { name: string }): Promise<AuthLoginResponse> => {
-    const response = await api.post<AuthLoginResponse>("/auth/register", data);
-    return response.data;
-  },
-  me: async (): Promise<AuthUser> => {
-    const response = await api.get<AuthUser>("/auth/me");
-    return response.data;
-  },
-};
+  login: (data: { username: string; password: string }) =>
+    unwrap<{ token: string; id: string; role: string }>(
+      api.post("/auth/login", data)
+    ),
+
+  me: () =>
+    unwrap<AuthUser>(api.get("/auth/me")),
+
+  changePassword: (data: {
+    current: string
+    newPassword: string
+  }) =>
+    unwrap(api.post("/auth/change-password", data)),
+}
+
+/* =========================================================
+   USERS API (SETTINGS PAGE)
+========================================================= */
+
+export const UserAPI = {
+  getUsers: () =>
+    unwrap<any[]>(api.get("/users")),
+
+  create: (data: {
+    username: string
+    password: string
+    role: string
+  }) =>
+    unwrap(api.post("/users", data)),
+
+  toggle: (id: number) =>
+    unwrap(api.patch(`/users/${id}/toggle`)),
+
+  update: (id: number, data: { role: string }) =>
+    unwrap(api.put(`/users/${id}`, data)),
+}
+
+/* =========================================================
+   PRODUCTS
+========================================================= */
 
 export const ProductAPI = {
-  getAll: async (): Promise<Product[]> => {
-    const response = await api.get<Product[]>("/products");
-    return response.data;
-  },
-  search: async (q: string): Promise<ProductSearchItem[]> => {
-    const response = await api.get<ProductSearchItem[]>(
-      `/products/search?q=${encodeURIComponent(q)}`
-    );
-    return response.data;
-  },
-  barcode: async (code: string): Promise<ProductSearchItem> => {
-    const response = await api.get<ProductSearchItem>(`/products/barcode/${code}`);
-    return response.data;
-  },
-  create: async (data: Partial<Product>): Promise<Product> => {
-    const response = await api.post<Product>("/products", data);
-    return response.data;
-  },
-  update: async (id: number, data: Partial<Product>): Promise<Product> => {
-    const response = await api.put<Product>(`/products/${id}`, data);
-    return response.data;
-  },
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/products/${id}`);
-  },
-};
+  getAll: () =>
+    unwrap(api.get("/products")),
+
+  search: (q: string) =>
+    unwrap(api.get(`/products/search?q=${encodeURIComponent(q)}`)),
+
+  barcode: (code: string) =>
+    unwrap(api.get(`/products/barcode/${code}`)),
+
+  create: (data: any) =>
+    unwrap(api.post("/products", data)),
+
+  update: (id: number, data: any) =>
+    unwrap(api.put(`/products/${id}`, data)),
+
+  delete: (id: number) =>
+    unwrap(api.delete(`/products/${id}`)),
+}
+
+/* =========================================================
+   INVENTORY
+========================================================= */
 
 export const InventoryAPI = {
-  getAll: async (): Promise<InventoryItem[]> => {
-    const response = await api.get<InventoryItem[]>("/inventory");
-    return response.data;
-  },
-  movements: async (): Promise<InventoryMovement[]> => {
-    const response = await api.get<InventoryMovement[]>("/inventory/movements");
-    return response.data;
-  },
-  lowStock: async (): Promise<InventoryItem[]> => {
-    const response = await api.get<InventoryItem[]>("/inventory/low-stock");
-    return response.data;
-  },
-  adjust: async (data: AdjustStockRequest): Promise<void> => {
-    await api.post("/inventory/adjust", data);
-  },
-};
+  getAll: () =>
+    unwrap(api.get("/inventory")),
+
+  movements: () =>
+    unwrap(api.get("/inventory/movements")),
+
+  lowStock: () =>
+    unwrap(api.get("/inventory/low-stock")),
+
+  adjust: (data: {
+    product_unit_id: number
+    quantity_change: number
+    reason: string
+  }) =>
+    unwrap(api.post("/inventory/adjust", data)),
+}
+
+/* =========================================================
+   SALES
+========================================================= */
 
 export const SalesAPI = {
-  create: async (data: CreateSaleRequest): Promise<SaleResponse> => {
-    const response = await api.post<SaleResponse>("/sales/create", data);
-    return response.data;
-  },
-  getById: async (id: number) => {
-    const response = await api.get(`/sales/${id}`);
-    return response.data;
-  },
-  returnSale: async (data: Partial<CreateSaleRequest>) => {
-    const response = await api.post("/sales/return", data);
-    return response.data;
-  },
-};
+  create: (data: any) =>
+    unwrap(api.post("/sales/create", data)),
+
+  getById: (id: number) =>
+    unwrap(api.get(`/sales/${id}`)),
+
+  returnSale: (data: any) =>
+    unwrap(api.post("/sales/return", data)),
+}
+
+/* =========================================================
+   PURCHASE
+========================================================= */
 
 export const PurchaseAPI = {
-  create: async (data: CreatePurchaseRequest): Promise<PurchaseResponse> => {
-    const response = await api.post<PurchaseResponse>("/purchase/create", data);
-    return response.data;
-  },
-  getById: async (id: number) => {
-    const response = await api.get(`/purchase/${id}`);
-    return response.data;
-  },
-};
+  create: (data: any) =>
+    unwrap(api.post("/purchase/create", data)),
+
+  getById: (id: number) =>
+    unwrap(api.get(`/purchase/${id}`)),
+}
+
+/* =========================================================
+   PARTIES
+========================================================= */
 
 export const PartyAPI = {
-  getAll: async (): Promise<Party[]> => {
-    const response = await api.get<Party[]>("/parties");
-    return response.data;
-  },
-  ledger: async (id: number): Promise<LedgerEntry[]> => {
-    const response = await api.get<LedgerEntry[]>(`/parties/${id}/ledger`);
-    return response.data;
-  },
-  create: async (data: CreatePartyRequest): Promise<Party> => {
-    const response = await api.post<Party>("/parties", data);
-    return response.data;
-  },
-  update: async (id: number, data: Partial<CreatePartyRequest>): Promise<Party> => {
-    const response = await api.put<Party>(`/parties/${id}`, data);
-    return response.data;
-  },
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`/parties/${id}`);
-  },
-};
+  getAll: () =>
+    unwrap(api.get("/parties")),
+
+  ledger: (id: number) =>
+    unwrap(api.get(`/parties/${id}/ledger`)),
+
+  create: (data: any) =>
+    unwrap(api.post("/parties", data)),
+
+  update: (id: number, data: any) =>
+    unwrap(api.put(`/parties/${id}`, data)),
+
+  delete: (id: number) =>
+    unwrap(api.delete(`/parties/${id}`)),
+}
+
+/* =========================================================
+   REPORTS
+========================================================= */
 
 export const ReportAPI = {
-  dashboard: async (): Promise<DashboardData> => {
-    const response = await api.get<DashboardData>("/reports/dashboard");
-    return response.data;
-  },
-  sales: async (from: string, to: string): Promise<SalesReportItem[]> => {
-    const response = await api.get<SalesReportItem[]>(
-      `/reports/sales?from=${from}&to=${to}`
-    );
-    return response.data;
-  },
-  inventory: async (): Promise<InventoryItem[]> => {
-    const response = await api.get<InventoryItem[]>("/reports/inventory");
-    return response.data;
-  },
-};
+  dashboard: () =>
+    unwrap(api.get("/reports/dashboard")),
 
-export default api;
+  sales: (from: string, to: string) =>
+    unwrap(api.get(`/reports/sales?from=${from}&to=${to}`)),
+
+  inventoryValue: () =>
+    unwrap(api.get("/reports/inventory-value")),
+
+  receivables: () =>
+    unwrap(api.get("/reports/receivables")),
+}
+
+/* =========================================================
+   BACKUP & RESTORE
+========================================================= */
+
+export const BackupAPI = {
+  create: () =>
+    unwrap(api.post("/backup/create")),
+
+  restore: async (file: File) => {
+    const form = new FormData()
+    form.append("file", file)
+
+    return unwrap(
+      api.post("/backup/restore", form, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+    )
+  },
+}
+
+/* =========================================================
+   EXPORT CLIENT
+========================================================= */
+
+export default api

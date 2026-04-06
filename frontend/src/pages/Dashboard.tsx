@@ -17,10 +17,10 @@ export default function Dashboard() {
 
   const metrics = data
     ? [
-        { label: "Today Sales", value: `₹${data.today_sales.toLocaleString()}`, changeType: "increase" as const },
-        { label: "Today Purchases", value: `₹${data.today_purchase.toLocaleString()}`, changeType: "increase" as const },
-        { label: "Total Receivables", value: `₹${data.receivables.toLocaleString()}`, changeType: "increase" as const },
-        { label: "Total Payables", value: `₹${data.payables.toLocaleString()}`, changeType: "decrease" as const },
+        { label: "Today Sales", value: `₹${(data.today_sales ?? 0).toLocaleString()}`, changeType: "increase" as const },
+        { label: "Today Purchases", value: `₹${(data.today_purchase ?? 0).toLocaleString()}`, changeType: "increase" as const },
+        { label: "Total Receivables", value: `₹${(data.receivables ?? 0).toLocaleString()}`, changeType: "increase" as const },
+        { label: "Total Payables", value: `₹${(data.payables ?? 0).toLocaleString()}`, changeType: "decrease" as const },
       ]
     : [];
 
@@ -65,7 +65,7 @@ export default function Dashboard() {
             </div>
 
             {/* Low Stock Alerts */}
-            {data.low_stock.length > 0 && (
+            {(data.low_stock?.length ?? 0) > 0 && (
               <div className="bg-card border border-border rounded-md p-4">
                 <div className="flex items-center gap-2 mb-4">
                   <AlertCircle className="w-5 h-5 text-[hsl(var(--warning))]" />
@@ -90,7 +90,7 @@ export default function Dashboard() {
             )}
 
             {/* Recent Transactions */}
-            {data.recent.length > 0 && (
+            {(data.recent?.length ?? 0) > 0 && (
               <div className="bg-card border border-border rounded-md p-4">
                 <h2 className="text-sm font-semibold text-foreground mb-4">Recent Transactions</h2>
                 <div className="overflow-x-auto">
@@ -123,7 +123,7 @@ export default function Dashboard() {
                           </td>
                           <td className="py-3 px-4 text-foreground">{tx.party}</td>
                           <td className="py-3 px-4 text-right text-foreground font-semibold">
-                            ₹{tx.amount.toLocaleString()}
+                            ₹{(tx.amount ?? 0).toLocaleString()}
                           </td>
                         </tr>
                       ))}

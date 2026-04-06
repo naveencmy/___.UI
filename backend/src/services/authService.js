@@ -16,3 +16,15 @@ exports.login = async(username,password)=>{
   return {token, user: {id: user.id, name: user.username, role: user.role}}
 
 }
+exports.changePassword = async (userId,current,newPass)=>{
+  const user = await userRepo.findById(userId)
+
+  const valid = await bcrypt.compare(current,user.password_hash)
+  if(!valid) throw new Error("Wrong password")
+
+  const hash = await bcrypt.hash(newPass,10)
+
+  await userRepo.updatePassword(userId,hash)
+
+  return {message:"Password updated"}
+}

@@ -10,3 +10,20 @@ exports.login = async(req,res,next)=>{
   }
 
 }
+exports.me = async (req, res, next) => {
+  try {
+    res.json({ id: req.user.id, role: req.user.role })
+  } catch (err) { next(err) }
+}
+
+exports.changePassword = async (req,res,next)=>{
+  try{
+    const {current,newPassword} = req.body
+    const result = await authService.changePassword(
+      req.user.id,
+      current,
+      newPassword
+    )
+    res.json(result)
+  }catch(err){ next(err) }
+}

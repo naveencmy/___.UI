@@ -134,6 +134,90 @@ exports.getReceivableSummary = async () => {
 }
 
 /*
+Today's total purchases
+Used in dashboard
+*/
+exports.getTodayPurchase = async () => {
+  const result = await db.query(
+  `
+  SELECT
+  COALESCE(SUM(grand_total),0) AS total_purchase
+  FROM invoices
+  WHERE type='purchase'
+  AND created_at::date = CURRENT_DATE
+  `
+  )
+  return result.rows[0]
+}
+
+/*
+Payables summary – total outstanding owed to suppliers
+*/
+exports.getPayablesSummary = async () => {
+  const result = await db.query(
+  `
+  SELECT
+  COALESCE(
+    SUM(
+      CASE WHEN le.entry_type='credit' THEN le.amount ELSE 0 END
+    ) -
+    SUM(
+      CASE WHEN le.entry_type='debit' THEN le.amount ELSE 0 END
+    ), 0
+  ) AS total_payables
+  FROM ledger_entries le
+  JOIN parties p ON p.id = le.party_id
+  WHERE p.type = 'supplier'
+  `
+  )
+  return result.rows[0]
+}
+
+/*
+Total receivables – sum of outstanding balances from customers
+*/
+exports.getTotalReceivables = async () => {
+  const result = await db.query(
+  `
+  SELECT
+  COALESCE(
+    SUM(
+      CASE WHEN le.entry_type='debit' THEN le.amount ELSE 0 END
+    ) -
+    SUM(
+      CASE WHEN le.entry_type='credit' THEN le.amount ELSE 0 END
+    ), 0
+  ) AS total_receivables
+  FROM ledger_entries le
+  JOIN parties p ON p.id = le.party_id
+  WHERE p.type = 'customer'
+  `
+  )
+  return result.rows[0]
+}
+
+/*
+Recent transactions (last 10)
+Used in dashboard
+*/
+exports.getRecentTransactions = async () => {
+  const result = await db.query(
+  `
+  SELECT
+    i.invoice_number AS invoice,
+    i.type,
+    COALESCE(p.name, 'Walk-in') AS party,
+    i.grand_total AS amount
+  FROM invoices i
+  LEFT JOIN parties p ON p.id = i.party_id
+  ORDER BY i.created_at DESC
+  LIMIT 10
+  `
+  )
+  return result.rows
+}
+
+/*
 Sales report by date range
 */
 exports.getSalesReport = async (from,to) => {

@@ -87,11 +87,11 @@ export default function Parties() {
 
   const totalCustomerBalance = parties
     .filter((p) => p.type === "customer")
-    .reduce((sum, p) => sum + Math.max(0, p.outstanding), 0);
+    .reduce((sum, p) => sum + Math.max(0, p.outstanding ?? 0), 0);
 
   const totalSupplierBalance = parties
     .filter((p) => p.type === "supplier")
-    .reduce((sum, p) => sum + Math.max(0, p.outstanding), 0);
+    .reduce((sum, p) => sum + Math.max(0, p.outstanding ?? 0), 0);
 
   return (
     <Layout>
@@ -195,7 +195,7 @@ export default function Parties() {
                               : "text-foreground"
                           }`}
                         >
-                          ₹{party.outstanding.toLocaleString()}
+                          ₹{(party.outstanding ?? 0).toLocaleString()}
                         </div>
                       </div>
                       {party.credit_limit && (
@@ -255,7 +255,7 @@ export default function Parties() {
                           : "text-[hsl(var(--error))]"
                       }`}
                     >
-                      ₹{selectedParty.outstanding.toLocaleString()}
+                      ₹{(selectedParty.outstanding ?? 0).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -280,7 +280,7 @@ export default function Parties() {
                           </div>
                           <div className="text-right">
                             <div className="font-semibold text-foreground">
-                              ₹{entry.amount.toLocaleString()}
+                              ₹{(entry.amount ?? 0).toLocaleString()}
                             </div>
                             <div className="text-muted-foreground">{entry.date}</div>
                           </div>
